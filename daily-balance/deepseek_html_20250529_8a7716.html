@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>天平平衡游戏</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+            position: relative;
+        }
+        
+        .game-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-bottom: 30px;
+            position: relative;
+            height: 200px;
+        }
+        
+        .box {
+            width: 150px;
+            height: 150px;
+            border: 2px solid #333;
+            display: flex;
+            flex-wrap: wrap;
+            align-content: flex-start;
+            padding: 5px;
+            background-color: #f5f5f5;
+        }
+        
+        .beam {
+            width: 200px;
+            height: 4px;
+            background-color: #333;
+            margin: 0 10px;
+            transform-origin: center;
+            transition: transform 0.5s ease;
+        }
+        
+        .balls-container {
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 20px;
+            width: 600px;
+        }
+        
+        .ball {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            cursor: move;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            font-weight: bold;
+            font-size: 12px;
+            user-select: none;
+        }
+        
+        .silver {
+            background-color: #c0c0c0;
+        }
+        
+        .blue {
+            background-color: #1e90ff;
+        }
+        
+        button {
+            padding: 10px 20px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-top: 20px;
+        }
+        
+        button:hover {
+            background-color: #45a049;
+        }
+        
+        .history {
+            margin-top: 30px;
+            width: 600px;
+            border-top: 1px solid #ddd;
+            padding-top: 20px;
+        }
+        
+        .history-item {
+            margin-bottom: 10px;
+            padding: 10px;
+            background-color: #f9f9f9;
+            border-radius: 4px;
+        }
+        
+        .weight-info {
+            margin-bottom: 20px;
+            font-size: 18px;
+        }
+        
+        .victory-message {
+            color: #4CAF50;
+            font-size: 24px;
+            font-weight: bold;
+            margin: 10px 0;
+            height: 30px;
+        }
+    </style>
+</head>
+<body>
+    <h1>天平平衡游戏</h1>
+    <div class="victory-message" id="victory-message"></div>
+    
+    <div class="weight-info">
+        <p>银灰色球和天蓝色球有不同的重量</p>
+        <p>请尝试让天平两边的总重量相等</p>
+    </div>
+    
+    <div class="game-container">
+        <div class="box" id="left-box"></div>
+        <div class="beam" id="beam"></div>
+        <div class="box" id="right-box"></div>
+    </div>
+    
+    <div class="balls-container" id="balls-container"></div>
+    
+    <button id="reset-btn">重置游戏</button>
+    
+    <div class="history" id="history"></div>
+    
+    <script>
+        // 游戏状态
+        const gameState = {
+            silverWeight: 0,
+            blueWeight: 0,
+            silverCount: 0,
+            blueCount: 0,
+            steps: 0,
+            isGameOver: false,
+            history: []
+        };
+        
+        // DOM元素
+        const leftBox = document.getElementById('left-box');
+        const rightBox = document.getElementById('right-box');
+        const beam = document.getElementById('beam');
+        const ballsContainer = document.getElementById('balls-container');
+        const resetBtn = document.getElementById('reset-btn');
+        const historyContainer = document.getElementById('history');
+        const victoryMessage = document.getElementById('victory-message');
+        
+        // 初始化游戏
+        function initGame() {
+            // 清空容器
+            leftBox.innerHTML = '';
+            rightBox.innerHTML = '';
+            ballsContainer.innerHTML = '';
+            beam.style.transform = 'rotate(0deg)';
+            victoryMessage.textContent = '';
+            
+            // 重置游戏状态
+            gameState.steps = 0;
+            gameState.isGameOver = false;
+            
+            // 生成方程 ax = by 的解
+            generateEquation();
+            
+            // 创建小球
+            createBalls();
+            
+            // 设置拖拽事件
+            setupDragEvents();
+        }
+        
+        // 生成方程 ax = by 的解
+        function generateEquation() {
+            let a, b, x, y;
+            
+            // 确保a和b不等且在1-9之间
+            do {
+                a = Math.floor(Math.random() * 9) + 1;
+                b = Math.floor(Math.random() * 9) + 1;
+            } while (a === b);
+            
+            // 确保x和y不等且在1-20之间
+            do {
+                x = Math.floor(Math.random() * 20) + 1;
+                y = Math.floor(Math.random() * 20) + 1;
+            } while (x === y || a * x !== b * y);
+            
+            // 设置游戏状态
+            gameState.silverWeight = a;
+            gameState.blueWeight = b;
+            gameState.silverCount = x + Math.floor(Math.random() * 5) + 1;
+            gameState.blueCount = y + Math.floor(Math.random() * 5) + 1;
+        }
+        
+        // 创建小球
+        function createBalls() {
+            // 创建银灰色球
+            for (let i = 0; i < gameState.silverCount; i++) {
+                const ball = document.createElement('div');
+                ball.className = 'ball silver';
+                ball.dataset.weight = gameState.silverWeight;
+                ball.dataset.type = 'silver';
+                ballsContainer.appendChild(ball);
+            }
+            
+            // 创建天蓝色球
+            for (let i = 0; i < gameState.blueCount; i++) {
+                const ball = document.createElement('div');
+                ball.className = 'ball blue';
+                ball.dataset.weight = gameState.blueWeight;
+                ball.dataset.type = 'blue';
+                ballsContainer.appendChild(ball);
+            }
+        }
+        
+        // 设置拖拽事件
+        function setupDragEvents() {
+            const balls = document.querySelectorAll('.ball');
+            
+            balls.forEach(ball => {
+                ball.draggable = true;
+                
+                ball.addEventListener('dragstart', function(e) {
+                    e.dataTransfer.setData('text/plain', this.dataset.type + ',' + this.dataset.weight);
+                    
+                    // 如果是来自盒子里的球，设置标记
+                    if (this.parentElement.classList.contains('box')) {
+                        e.dataTransfer.setData('from-box', 'true');
+                        e.dataTransfer.setData('box-id', this.parentElement.id);
+                    }
+                    
+                    setTimeout(() => {
+                        this.style.display = 'none';
+                    }, 0);
+                });
+                
+                ball.addEventListener('dragend', function() {
+                    // 如果球没有被放入任何容器，则恢复显示
+                    if (this.style.display === 'none' && !this.parentElement.classList.contains('box')) {
+                        this.style.display = 'flex';
+                    }
+                });
+            });
+            
+            // 盒子拖拽事件
+            [leftBox, rightBox].forEach(container => {
+                container.addEventListener('dragover', function(e) {
+                    e.preventDefault();
+                });
+                
+                container.addEventListener('drop', function(e) {
+                    e.preventDefault();
+                    handleDrop(e, this);
+                });
+            });
+            
+            // 球容器拖拽事件
+            ballsContainer.addEventListener('dragover', function(e) {
+                e.preventDefault();
+            });
+            
+            ballsContainer.addEventListener('drop', function(e) {
+                e.preventDefault();
+                handleDrop(e, this);
+            });
+            
+            // 文档拖拽事件 - 处理拖出方块范围的情况
+            document.addEventListener('dragover', function(e) {
+                e.preventDefault();
+            });
+            
+            document.addEventListener('drop', function(e) {
+                e.preventDefault();
+                // 如果拖放发生在球容器或盒子之外
+                if (!e.target.closest('.box') && !e.target.closest('.balls-container')) {
+                    const fromBox = e.dataTransfer.getData('from-box') === 'true';
+                    const boxId = e.dataTransfer.getData('box-id');
+                    
+                    if (fromBox) {
+                        const sourceBox = document.getElementById(boxId);
+                        const ball = sourceBox.querySelector('.ball[style*="display: none"]');
+                        
+                        if (ball) {
+                            sourceBox.removeChild(ball);
+                            ballsContainer.appendChild(ball);
+                            ball.style.display = 'flex';
+                            
+                            // 增加步数
+                            gameState.steps++;
+                            
+                            // 计算并更新天平
+                            updateBalance();
+                        }
+                    }
+                }
+            });
+        }
+        
+        // 处理拖放事件的通用函数
+        function handleDrop(e, targetContainer) {
+            const data = e.dataTransfer.getData('text/plain').split(',');
+            const type = data[0];
+            const weight = data[1];
+            const fromBox = e.dataTransfer.getData('from-box') === 'true';
+            const boxId = e.dataTransfer.getData('box-id');
+            
+            // 如果游戏结束，不允许拖拽
+            if (gameState.isGameOver) return;
+            
+            // 创建或移动球
+            let ball;
+            
+            if (fromBox) {
+                // 从另一个盒子移动过来
+                const sourceBox = document.getElementById(boxId);
+                ball = sourceBox.querySelector('.ball[style*="display: none"]');
+                
+                // 如果拖回原盒子，不做任何操作
+                if (sourceBox === targetContainer) {
+                    ball.style.display = 'flex';
+                    return;
+                }
+                
+                // 从一个盒子拖到另一个盒子或球容器
+                sourceBox.removeChild(ball);
+                targetContainer.appendChild(ball);
+                ball.style.display = 'flex';
+            } else {
+                // 从球容器拖到盒子
+                if (targetContainer === ballsContainer) return;
+                
+                ball = ballsContainer.querySelector('.ball[style*="display: none"]');
+                if (ball) {
+                    ballsContainer.removeChild(ball);
+                    targetContainer.appendChild(ball);
+                    ball.style.display = 'flex';
+                }
+            }
+            
+            // 增加步数
+            if (ball) {
+                gameState.steps++;
+                // 计算并更新天平
+                updateBalance();
+            }
+        }
+        
+        // 更新天平状态
+        function updateBalance() {
+            const leftBalls = leftBox.querySelectorAll('.ball');
+            const rightBalls = rightBox.querySelectorAll('.ball');
+            
+            // 计算左边总重量
+            let leftSilverCount = 0;
+            let leftBlueCount = 0;
+            leftBalls.forEach(ball => {
+                if (ball.classList.contains('silver')) {
+                    leftSilverCount++;
+                } else {
+                    leftBlueCount++;
+                }
+            });
+            const leftTotal = leftSilverCount * gameState.silverWeight + 
+                             leftBlueCount * gameState.blueWeight;
+            
+            // 计算右边总重量
+            let rightSilverCount = 0;
+            let rightBlueCount = 0;
+            rightBalls.forEach(ball => {
+                if (ball.classList.contains('silver')) {
+                    rightSilverCount++;
+                } else {
+                    rightBlueCount++;
+                }
+            });
+            const rightTotal = rightSilverCount * gameState.silverWeight + 
+                              rightBlueCount * gameState.blueWeight;
+            
+            // 更新天平倾斜
+            if (leftTotal === rightTotal) {
+                beam.style.transform = 'rotate(0deg)';
+                // 检查是否胜利
+                if (leftBalls.length > 0 && rightBalls.length > 0) {
+                    gameOver();
+                }
+            } else if (leftTotal < rightTotal) {
+                beam.style.transform = 'rotate(15deg)';
+            } else {
+                beam.style.transform = 'rotate(-15deg)';
+            }
+        }
+        
+        // 游戏结束
+        function gameOver() {
+            gameState.isGameOver = true;
+            
+            // 显示胜利消息
+            victoryMessage.textContent = `胜利！步数: ${gameState.steps}`;
+            
+            // 添加到历史记录
+            const historyItem = document.createElement('div');
+            historyItem.className = 'history-item';
+            historyItem.innerHTML = `
+                <p>银灰色球重量: ${gameState.silverWeight}, 初始数量: ${gameState.silverCount}</p>
+                <p>天蓝色球重量: ${gameState.blueWeight}, 初始数量: ${gameState.blueCount}</p>
+                <p>步数: ${gameState.steps}</p>
+            `;
+            historyContainer.prepend(historyItem);
+            
+            // 禁用拖拽
+            const balls = document.querySelectorAll('.ball');
+            balls.forEach(ball => {
+                ball.draggable = false;
+            });
+        }
+        
+        // 重置按钮事件
+        resetBtn.addEventListener('click', initGame);
+        
+        // 初始化游戏
+        initGame();
+    </script>
+</body>
+</html>
